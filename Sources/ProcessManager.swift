@@ -63,13 +63,43 @@ final class ProcessManager {
         terminate(pid: info.pid)
     }
 
-    /// 优雅停止：先 SIGTERM，3 秒后仍存活则 SIGKILL。
+    /// 优雅停止整棵进程树：先 SIGTERM，3 秒后仍存活则 SIGKILL。
+    /// 不仅杀进程组，还要杀所有后代——因为 turbo 等工具会把子进程放到独立进程组。
     func terminate(pid: Int32) {
+        let descendants = allDescendants(of: pid)
         kill(-pid, SIGTERM)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            guard let self, self.isAlive(pid: pid) else { return }
-            kill(-pid, SIGKILL)
+        for d in descendants {
+            kill(d, SIGTERM)
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self else { return }
+            kill(-pid, SIGKILL)
+            for d in descendants where self.isAlive(pid: d) {
+                kill(d, SIGKILL)
+            }
+        }
+    }
+
+    /// 找出 pid 的所有后代进程（递归，跨进程组）。
+    private func allDescendants(of pid: Int32) -> [Int32] {
+        guard let output = ProcessRunner.run("/bin/ps", ["-eo", "pid=,ppid="]) else { return [] }
+        var childrenMap: [Int32: [Int32]] = [:]
+        for line in output.split(separator: "\n") {
+            let parts = line.split(whereSeparator: { $0.isWhitespace }).compactMap { Int32($0) }
+            guard parts.count >= 2 else { continue }
+            childrenMap[parts[1], default: []].append(parts[0])
+        }
+        var result: [Int32] = []
+        var queue: [Int32] = [pid]
+        while let current = queue.first {
+            queue.removeFirst()
+            guard let children = childrenMap[current] else { continue }
+            for child in children {
+                result.append(child)
+                queue.append(child)
+            }
+        }
+        return result
     }
 
     // MARK: - posix_spawn

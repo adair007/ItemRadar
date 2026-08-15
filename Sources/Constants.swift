@@ -11,6 +11,10 @@ enum AppInfo {
             .appendingPathComponent("Applications/\(name).app").path
     }
 
+    static var executablePath: String {
+        appPath + "/Contents/MacOS/" + name
+    }
+
     static var launchAgentPath: String {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/LaunchAgents/\(launchAgentLabel).plist").path

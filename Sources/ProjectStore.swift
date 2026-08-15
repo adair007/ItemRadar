@@ -398,8 +398,7 @@ final class ProjectStore: ObservableObject {
               <string>\(AppInfo.launchAgentLabel)</string>
               <key>ProgramArguments</key>
               <array>
-                <string>/usr/bin/open</string>
-                <string>\(AppInfo.appPath)</string>
+                <string>\(AppInfo.executablePath)</string>
               </array>
               <key>RunAtLoad</key>
               <true/>
