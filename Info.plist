@@ -14,6 +14,8 @@
 	<string>1.0</string>
 	<key>CFBundleExecutable</key>
 	<string>ItemRadar</string>
+	<key>CFBundleIconFile</key>
+	<string>icon</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>LSMinimumSystemVersion</key>

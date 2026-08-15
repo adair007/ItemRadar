@@ -15,8 +15,9 @@ swiftc -swift-version 5 -O \
     Sources/*.swift \
     -o "$APP/Contents/MacOS/$APP_NAME"
 
-echo ">> 写入 Info.plist ..."
+echo ">> 写入 Info.plist 与图标 ..."
 cp Info.plist "$APP/Contents/Info.plist"
+cp Sources/icon.icns "$APP/Contents/Resources/icon.icns"
 
 echo ">> ad-hoc 签名 ..."
 codesign --force --deep --sign - "$APP"

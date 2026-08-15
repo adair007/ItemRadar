@@ -20,7 +20,8 @@ cp -R build/ItemRadar.app ~/Applications/   # 安装到 ~/Applications
 open ~/Applications/ItemRadar.app        # 启动
 ```
 
-> 启动后它会出现在屏幕**右上角菜单栏**（一个终端图标），不占 Dock。
+> 启动后它会出现在屏幕**右上角菜单栏**（一个雷达图标），同时也在 **Dock** 上。
+> 退出后点 **Dock 图标** 或按 `Command + 空格` 搜 `ItemRadar` 即可重新打开。
 
 ### 2. 打开面板
 
