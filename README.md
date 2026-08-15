@@ -5,29 +5,76 @@ A macOS menu bar app that discovers and manages local services (projects without
 一个 macOS 菜单栏应用：自动发现本机「没有桌面客户端、原本要靠终端启动」的项目，一键启动 / 停止，并在服务有网页时自动用浏览器打开。
 
 > 列表只展示「可启动」的项目：必须能解析出启动命令才会显示；解析不出命令的项目
-> 不会出现在列表里（需在 `projects` 里手动补 `command` 才会被纳入）。
+> 不会出现在列表里（需手动补 `command` 才会被纳入）。
+
+## 快速上手（使用教程）
+
+### 1. 安装
+
+需要 macOS 13+，并且已安装 Xcode 命令行工具（`xcode-select --install`）。
+
+```sh
+cd ~/Documents/deepseek/ProjectBar      # 源码目录
+./build.sh                               # 编译出 build/ItemRadar.app
+cp -R build/ItemRadar.app ~/Applications/   # 安装到 ~/Applications
+open ~/Applications/ItemRadar.app        # 启动
+```
+
+> 启动后它会出现在屏幕**右上角菜单栏**（一个终端图标），不占 Dock。
+
+### 2. 打开面板
+
+点菜单栏的**终端图标** → 弹出 ItemRadar 面板。
+
+### 3. 查看你的项目
+
+打开面板时会**自动扫描**「下载 / 桌面 / 文档」等位置，列出所有可启动的项目，每项显示：
+**名字 · 路径 · 启动命令**。
+
+### 4. 一键启动 / 停止
+
+- 点项目右侧蓝色 **「启动」** → 服务启动；如果有网页，会**自动用默认浏览器打开**。
+- 运行中的项目显示绿色「运行中」+ 红色 **「停止」** 按钮，点「停止」即可关闭服务。
+
+### 5. 没扫到项目？
+
+- 点右上角 📁 **「从指定文件夹获取」** → 选项目所在文件夹，重新扫描。
+- 或点底部 **「手动添加」** → 填「项目安装位置」和「启动命令」（点「自动识别」会自动填），保存即可。
+
+### 6. 设置
+
+点右上角 ⚙ **「设置」**，可以：增删扫描文件夹、开关「额外扫描用户目录顶层」、开关「**开机自启动**」。
+
+### 常见问题
+
+| 问题 | 处理 |
+|---|---|
+| 点启动没反应 | 看按钮是否变红色「停止」+ 绿色「运行中」；失败会在顶部弹红色提示条 |
+| 打开的不是想要的页面 | 右键项目 →「编辑网页地址…」写死正确地址 |
+| 不想自动开浏览器 | 右键项目 → 取消「自动打开浏览器」 |
+| 项目不该出现 | 右键项目 →「从列表中移除」 |
+
+---
 
 ## 功能
 
 - 菜单栏图标：终端符号（terminal）
 - 点击图标弹出面板：项目列表（名字 / 路径 / 启动命令）+ 每项的「启动 / 停止」按钮
 - 启动后**自动探测网页地址并用浏览器打开**（见下文「自动打开浏览器」）
-- 右上角「从指定文件夹获取」：弹系统文件夹选择器，选中后自动扫描其中的可启动项目
-- 右上角「设置」⚙：配置扫描范围（哪些文件夹会被自动扫描），可添加/删除文件夹，开关用户目录顶层扫描
-- 底部「手动添加」：手动添加一个服务（用于扫描器识别不到的服务，如全局 CLI 工具 / 注入式运行时），填写时会校验「路径是否存在、命令是否可用、网页地址格式」
-- 列表支持**拖拽排序**（顺序会记住，下次启动还在）
+- 右上角 📁「从指定文件夹获取」：弹文件夹选择器，选中后扫描其中的可启动项目
+- 右上角 ⚙「设置」：配置扫描范围（哪些文件夹会被扫）、开关开机自启动
+- 底部「手动添加」：手动添加一个服务（用于扫描器识别不到的服务，如全局 CLI 工具 / 注入式运行时），填写时校验「路径是否存在、命令是否可用、网页地址格式」
+- 列表支持**拖拽排序**（顺序会记住）
 - 右键项目行：
-  - 「在 Finder 中显示」
-  - 「打开日志」「在浏览器打开」（运行中时）
-  - 「编辑启动命令…」「编辑网页地址…」
-  - 「复制启动命令」
+  - 「在 Finder 中显示」「打开日志」「在浏览器打开」
+  - 「编辑启动命令…」「编辑网页地址…」「复制启动命令」
   - 「自动打开浏览器」开关（可逐项目关闭）
   - 「从列表中移除」
 
 ## 已安装位置
 
-- 应用：`~/Applications/ProjectBar.app`（已加入登录自启）
-- 源码：`~/Documents/deepseek/ProjectBar/`
+- 应用：`~/Applications/ItemRadar.app`
+- 源码 / 仓库：https://github.com/adair007/ItemRadar
 - 配置：`~/.projectbar/config.json`
 - 运行状态：`~/.projectbar/state.json`
 - 服务日志：`~/.projectbar/logs/`
@@ -38,8 +85,8 @@ A macOS menu bar app that discovers and manages local services (projects without
 - 额外扫用户目录顶层（深度 1，覆盖 `~/code`、`~/github` 等）
 
 > ⚠️ 扫描器只能识别「项目目录」（含 `package.json` / Python / Docker 等特征文件）。
-> 像 **全局 CLI 工具**（`dsh`、`astrbot`）或**注入式运行时**（NapCat 注入 QQ）这类
-> 「不是目录项目」的服务，扫描器识别不到——请用底部「添加服务…」手动添加，
+> 像**全局 CLI 工具**（`dsh`、`astrbot`）或**注入式运行时**（NapCat 注入 QQ）这类
+> 「不是目录项目」的服务，扫描器识别不到——请用底部「手动添加」，
 > 填好启动命令和网页地址即可。
 
 ## 自动打开浏览器
@@ -111,7 +158,7 @@ A macOS menu bar app that discovers and manages local services (projects without
 ## 命令行用法（可选）
 
 ```sh
-BIN=~/Applications/ProjectBar.app/Contents/MacOS/ProjectBar
+BIN=~/Applications/ItemRadar.app/Contents/MacOS/ItemRadar
 "$BIN" --scan                 # 列出已发现的项目
 "$BIN" --start <路径或名称>    # 启动
 "$BIN" --stop  <路径或名称>    # 停止
@@ -124,15 +171,15 @@ BIN=~/Applications/ProjectBar.app/Contents/MacOS/ProjectBar
 ```sh
 cd ~/Documents/deepseek/ProjectBar
 ./build.sh
-cp -R build/ProjectBar.app ~/Applications/ && codesign --force --deep --sign - ~/Applications/ProjectBar.app
+cp -R build/ItemRadar.app ~/Applications/ && codesign --force --deep --sign - ~/Applications/ItemRadar.app
 ```
 
 ## 卸载
 
 ```sh
-launchctl unload ~/Library/LaunchAgents/local.projectbar.plist
-rm -f ~/Library/LaunchAgents/local.projectbar.plist
-rm -rf ~/Applications/ProjectBar.app
+launchctl unload ~/Library/LaunchAgents/local.itemradar.plist
+rm -f ~/Library/LaunchAgents/local.itemradar.plist
+rm -rf ~/Applications/ItemRadar.app
 # rm -rf ~/.projectbar   # 配置与日志一并删除
 ```
 
