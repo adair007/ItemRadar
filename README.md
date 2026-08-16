@@ -2,7 +2,7 @@
 
 A macOS menu bar app that discovers and manages local services (projects without a desktop client) — scan, one-click start/stop, and auto-open the web UI in your browser.
 
-一个 macOS 菜单栏应用：自动发现本机「没有桌面客户端、原本要靠终端启动」的项目，一键启动 / 停止，并在服务有网页时自动用浏览器打开。
+一个 macOS 菜单栏应用：自动发现本机「没有桌面客户端、原本要靠终端命令启动」的项目，一键启动 / 停止，并在服务有网页时自动用浏览器打开。
 
 > 列表只展示「可启动」的项目：必须能解析出启动命令才会显示；解析不出命令的项目
 > 不会出现在列表里（需手动补 `command` 才会被纳入）。
