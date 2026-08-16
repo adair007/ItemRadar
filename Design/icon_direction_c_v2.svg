@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Background: subtle warm gray -->
+    <linearGradient id="bgC2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f1f5f9"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+
+    <!-- Card gradients: more refined, less saturated -->
+    <linearGradient id="card1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="card2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="card3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#db2777"/>
+    </linearGradient>
+
+    <!-- Soft shadow for depth -->
+    <filter id="shadow" x="-15%" y="-15%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.1"/>
+    </filter>
+
+    <!-- Glow for scan ring -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="24" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Inner shadow for cards -->
+    <filter id="innerShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur"/>
+      <feOffset dx="0" dy="3" result="offsetBlur"/>
+      <feComposite in="offsetBlur" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+      <feFlood flood-color="#000000" flood-opacity="0.15"/>
+      <feComposite in2="shadowDiff" operator="in"/>
+      <feComposite in2="SourceGraphic" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- macOS rounded rect background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="url(#bgC2)"/>
+
+  <!-- Top inner highlight for glass feel -->
+  <rect x="20" y="20" width="984" height="480" rx="210" ry="210" fill="#ffffff" opacity="0.4"/>
+
+  <!-- Scanning ring (clearer, behind cards) -->
+  <g transform="translate(512, 512)">
+    <!-- Main ring -->
+    <circle r="380" fill="none" stroke="#6366f1" stroke-width="3" opacity="0.35"/>
+    <!-- Inner ring for depth -->
+    <circle r="320" fill="none" stroke="#6366f1" stroke-width="1.5" opacity="0.2"/>
+    <!-- Sweep sector -->
+    <path d="M 0,0 L 380,0 A 380,380 0 0,0 268,-268 Z" fill="#6366f1" opacity="0.12"/>
+    <!-- Sweep line (brighter) -->
+    <line x1="0" y1="0" x2="268" y2="-268" stroke="#6366f1" stroke-width="4" opacity="0.6" stroke-linecap="round"/>
+    <!-- Crosshair lines -->
+    <line x1="-380" y1="0" x2="380" y2="0" stroke="#6366f1" stroke-width="1" opacity="0.15"/>
+    <line x1="0" y1="-380" x2="0" y2="380" stroke="#6366f1" stroke-width="1" opacity="0.15"/>
+
+    <!-- Ping dots: discovered targets on the radar rings -->
+    <!-- Outer ring pings -->
+    <circle cx="280" cy="-280" r="10" fill="#00d9ff" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="280" cy="-280" r="4" fill="#ffffff"/>
+
+    <circle cx="-320" cy="-220" r="8" fill="#00d9ff" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="-320" cy="-220" r="3" fill="#ffffff"/>
+
+    <!-- Middle ring pings -->
+    <circle cx="220" cy="220" r="9" fill="#4ade80" opacity="0.85">
+      <animate attributeName="opacity" values="0.85;0.35;0.85" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="220" cy="220" r="3.5" fill="#ffffff"/>
+
+    <circle cx="-200" cy="250" r="7" fill="#4ade80" opacity="0.75">
+      <animate attributeName="opacity" values="0.75;0.3;0.75" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="-200" cy="250" r="3" fill="#ffffff"/>
+
+    <!-- Inner ring ping -->
+    <circle cx="150" cy="-120" r="8" fill="#fbbf24" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.4;0.9" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="150" cy="-120" r="3" fill="#ffffff"/>
+
+    <!-- Extra small pings near sweep line for dynamic feel -->
+    <circle cx="340" cy="-180" r="6" fill="#00d9ff" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;0.2;0.7" dur="1.2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- Stacked project cards -->
+  <g filter="url(#shadow)">
+    <!-- Bottom card (pink) -->
+    <rect x="302" y="540" width="420" height="240" rx="32" fill="url(#card3)"/>
+    <rect x="348" y="584" width="130" height="18" rx="9" fill="#ffffff" opacity="0.5"/>
+    <rect x="348" y="624" width="220" height="14" rx="7" fill="#ffffff" opacity="0.3"/>
+    <rect x="348" y="656" width="180" height="14" rx="7" fill="#ffffff" opacity="0.3"/>
+    <!-- Small green status dot -->
+    <circle cx="680" cy="610" r="14" fill="#4ade80"/>
+    <circle cx="680" cy="610" r="6" fill="#ffffff"/>
+
+    <!-- Middle card (purple) -->
+    <rect x="352" y="410" width="420" height="240" rx="32" fill="url(#card2)"/>
+    <rect x="398" y="454" width="130" height="18" rx="9" fill="#ffffff" opacity="0.5"/>
+    <rect x="398" y="494" width="220" height="14" rx="7" fill="#ffffff" opacity="0.3"/>
+    <rect x="398" y="526" width="180" height="14" rx="7" fill="#ffffff" opacity="0.3"/>
+    <!-- Small yellow status dot -->
+    <circle cx="730" cy="480" r="14" fill="#fbbf24"/>
+    <circle cx="730" cy="480" r="6" fill="#ffffff"/>
+
+    <!-- Top card (indigo) -->
+    <rect x="402" y="280" width="420" height="240" rx="32" fill="url(#card1)"/>
+    <rect x="448" y="324" width="130" height="18" rx="9" fill="#ffffff" opacity="0.5"/>
+    <rect x="448" y="364" width="220" height="14" rx="7" fill="#ffffff" opacity="0.3"/>
+    <rect x="448" y="396" width="180" height="14" rx="7" fill="#ffffff" opacity="0.3"/>
+    <!-- Small green status dot -->
+    <circle cx="780" cy="350" r="14" fill="#4ade80"/>
+    <circle cx="780" cy="350" r="6" fill="#ffffff"/>
+  </g>
+
+  <!-- Center hub (scan origin, overlaid on cards) -->
+  <circle cx="512" cy="512" r="28" fill="#6366f1" filter="url(#glow)"/>
+  <circle cx="512" cy="512" r="14" fill="#ffffff"/>
+
+  <!-- Decorative corner arcs suggesting "radar sweep" -->
+  <path d="M 120 512 A 392 392 0 0 1 512 120" fill="none" stroke="#6366f1" stroke-width="3" opacity="0.12" stroke-linecap="round"/>
+  <path d="M 904 512 A 392 392 0 0 0 512 904" fill="none" stroke="#6366f1" stroke-width="3" opacity="0.08" stroke-linecap="round"/>
+
+  <!-- Outer subtle rim -->
+  <rect x="4" y="4" width="1016" height="1016" rx="226" ry="226" fill="none" stroke="#000000" stroke-width="2" opacity="0.05"/>
+</svg>

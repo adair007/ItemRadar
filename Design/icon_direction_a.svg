@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bgA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1f3c"/>
+      <stop offset="50%" stop-color="#162447"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+    <linearGradient id="sweepA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e94560" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#e94560" stop-opacity="0.1"/>
+    </linearGradient>
+    <filter id="glowA" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- macOS rounded rect background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="url(#bgA)"/>
+  <rect x="20" y="20" width="984" height="492" rx="210" ry="210" fill="#ffffff" opacity="0.03"/>
+
+  <!-- Radar grid: concentric circles -->
+  <g transform="translate(512, 512)" fill="none" stroke="#4a9eff" stroke-width="2.5" opacity="0.3">
+    <circle r="140"/>
+    <circle r="220"/>
+    <circle r="300"/>
+  </g>
+
+  <!-- Crosshairs -->
+  <g transform="translate(512, 512)" stroke="#4a9eff" stroke-width="2" opacity="0.25">
+    <line x1="-300" y1="0" x2="300" y2="0"/>
+    <line x1="0" y1="-300" x2="0" y2="300"/>
+  </g>
+
+  <!-- Radar sweep arc -->
+  <g transform="translate(512, 512)" filter="url(#glowA)">
+    <path d="M 0,0 L 300,0 A 300,300 0 0,0 212,-212 Z" fill="url(#sweepA)" opacity="0.6"/>
+    <line x1="0" y1="0" x2="212" y2="-212" stroke="#e94560" stroke-width="4" opacity="0.9"/>
+  </g>
+
+  <!-- Center hub -->
+  <circle cx="512" cy="512" r="18" fill="#e94560" filter="url(#glowA)"/>
+  <circle cx="512" cy="512" r="9" fill="#ffffff"/>
+
+  <!-- Ping dots (discovered projects) -->
+  <g fill="#00d9ff" filter="url(#glowA)">
+    <circle cx="652" cy="412" r="10" opacity="0.9"/>
+    <circle cx="412" cy="612" r="7" opacity="0.75"/>
+    <circle cx="612" cy="652" r="6" opacity="0.6"/>
+  </g>
+
+  <!-- Subtle terminal hint -->
+  <g transform="translate(512, 780)" text-anchor="middle">
+    <text x="0" y="0" font-family="SF Mono, Monaco, Menlo, monospace" font-size="68" font-weight="600" fill="#ffffff" opacity="0.6" letter-spacing="3">&gt;_</text>
+  </g>
+
+  <!-- Outer rim -->
+  <rect x="4" y="4" width="1016" height="1016" rx="226" ry="226" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.08"/>
+</svg>

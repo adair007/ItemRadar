@@ -132,6 +132,7 @@ struct ContentView: View {
                             onRemove: { store.removeFromList(project) },
                             onUpdateCommand: { store.updateCommand(project, command: $0) },
                             onUpdateURL: { store.updateURL(project, url: $0) },
+                            onUpdateName: { store.updateName(project, name: $0) },
                             onUpdateOpenBrowser: { store.updateOpenBrowser(project, openBrowser: $0) },
                             onCopyCommand: { store.copyCommand(project) }
                         )

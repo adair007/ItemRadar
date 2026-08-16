@@ -15,10 +15,11 @@ struct ProjectRow: View {
     let onRemove: () -> Void
     let onUpdateCommand: (String) -> Void
     let onUpdateURL: (String) -> Void
+    let onUpdateName: (String) -> Void
     let onUpdateOpenBrowser: (Bool) -> Void
     let onCopyCommand: () -> Void
 
-    private enum EditField { case command, url }
+    private enum EditField { case command, url, name }
 
     @State private var editing: EditField?
     @State private var editText = ""
@@ -79,7 +80,7 @@ struct ProjectRow: View {
 
             if editing != nil {
                 HStack(spacing: 6) {
-                    TextField(editing == .command ? "启动命令" : "网页地址", text: $editText)
+                    TextField(editing == .name ? "名称" : (editing == .command ? "启动命令" : "网页地址"), text: $editText)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 12))
                     Button("保存") { saveEdit() }
@@ -119,6 +120,9 @@ struct ProjectRow: View {
                 Button("在浏览器打开", action: onOpenBrowser)
             }
             Divider()
+            Button("编辑名称…") {
+                startEdit(.name, project.name)
+            }
             Button("编辑启动命令…") {
                 startEdit(.command, project.command ?? "")
             }
@@ -149,7 +153,9 @@ struct ProjectRow: View {
 
     private func saveEdit() {
         let trimmed = editText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if editing == .command {
+        if editing == .name {
+            onUpdateName(trimmed)
+        } else if editing == .command {
             onUpdateCommand(trimmed)
         } else if editing == .url {
             onUpdateURL(trimmed)

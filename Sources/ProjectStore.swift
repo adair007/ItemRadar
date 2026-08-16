@@ -314,6 +314,15 @@ final class ProjectStore: ObservableObject {
         scanNow()
     }
 
+    /// 设置项目的显示名称并刷新。
+    func updateName(_ project: Project, name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        configManager.upsertManual(path: project.id) { entry in
+            entry.name = trimmed.isEmpty ? nil : trimmed
+        }
+        scanNow()
+    }
+
     /// 开关「自动打开浏览器」并刷新。
     func updateOpenBrowser(_ project: Project, openBrowser: Bool) {
         configManager.upsertManual(path: project.id) { entry in
