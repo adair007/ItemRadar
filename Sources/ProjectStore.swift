@@ -21,6 +21,10 @@ final class ProjectStore: ObservableObject {
     private var detectedURLs: [String: URL] = [:]
     private var externalPIDs: [String: Int32] = [:]
 
+    /// 防抖：记录上次 refreshRunning 的时间，避免短时间内重复执行。
+    private var lastRefreshRunningTime: Date?
+    private let refreshRunningDebounceInterval: TimeInterval = 5.0
+
     init() {
         configManager = ConfigManager()
         configManager.ensureExists()
@@ -59,7 +63,7 @@ final class ProjectStore: ObservableObject {
     func refresh() {
         cleanupMissingManualProjects()
         scanNow()
-        refreshRunning()
+        refreshRunning(force: true)
         setStatus("已刷新，当前 \(projects.count) 个可启动项目")
     }
 
@@ -77,7 +81,15 @@ final class ProjectStore: ObservableObject {
 
     /// 根据进程管理器的实际状态，刷新运行状态集合。
     /// 本应用启动的进程同步识别；外部进程（端口监听）在后台探测，避免阻塞主线程。
-    private func refreshRunning() {
+    /// 默认带 5 秒防抖，force: true 可跳过防抖（用于手动刷新）。
+    private func refreshRunning(force: Bool = false) {
+        if !force,
+           let last = lastRefreshRunningTime,
+           Date().timeIntervalSince(last) < refreshRunningDebounceInterval {
+            return
+        }
+        lastRefreshRunningTime = Date()
+
         let snapshot = projects
         let paths = Set(snapshot.filter { processManager.isRunning(path: $0.id) }.map { $0.id })
         runningPaths = paths
@@ -87,11 +99,13 @@ final class ProjectStore: ObservableObject {
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self else { return }
+            // 批量获取所有监听端口，减少 lsof 调用次数
+            let allPorts = URLDetector.allListeningPorts()
             var newPaths = paths
             var pids: [String: Int32] = [:]
             for project in toProbe {
                 guard let port = self.portOf(project),
-                      let pid = URLDetector.pidListening(on: port),
+                      let pid = allPorts[port],
                       URLDetector.pidMatchesProject(pid, command: project.command ?? "", path: project.id)
                 else { continue }
                 newPaths.insert(project.id)
@@ -199,16 +213,15 @@ final class ProjectStore: ObservableObject {
     }
 
     /// 启动 3 秒后检查进程是否还活着；若已退出且未被用户停止，则提示可能命令有误。
+    /// 检查只做 kill(pid, 0) 这类非阻塞系统调用，直接在主线程延迟即可，省一次线程切换。
     private func scheduleLivenessCheck(project: Project) {
-        DispatchQueue.global().asyncAfter(deadline: .now() + Timing.livenessCheck) { [weak self] in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                let stillTracked = self.processManager.runningInfo(path: project.id) != nil
-                let alive = self.processManager.isRunning(path: project.id)
-                if stillTracked && !alive {
-                    self.runningPaths.remove(project.id)
-                    self.setStatus("「\(project.name)」启动后异常退出，可能是启动命令不对", warning: true)
-                }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Timing.livenessCheck) { [weak self] in
+            guard let self else { return }
+            let stillTracked = self.processManager.runningInfo(path: project.id) != nil
+            let alive = self.processManager.isRunning(path: project.id)
+            if stillTracked && !alive {
+                self.runningPaths.remove(project.id)
+                self.setStatus("「\(project.name)」启动后异常退出，可能是启动命令不对", warning: true)
             }
         }
     }
@@ -229,30 +242,40 @@ final class ProjectStore: ObservableObject {
     /// 启动后异步探测网页地址，需要时自动用默认浏览器打开。
     private func autoOpenBrowserIfNeeded(project: Project, info: RunningInfo) {
         guard project.openBrowser else { return }
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let self else { return }
-            var url: URL?
-            if let manual = project.url?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !manual.isEmpty,
-               let normalized = URLDetector.normalize(manual) {
-                // 手动 url：等服务端口就绪后再打开（如 NapCat 启动较慢）
-                if let port = normalized.port {
-                    URLDetector.waitForPort(port, timeout: Timing.portWaitTimeout)
-                }
-                url = URLDetector.fixLocalhost(normalized)
-            } else {
-                url = URLDetector.detect(manualURL: nil, logFile: info.logFile, pid: info.pid)
-            }
-            DispatchQueue.main.async {
-                if let url {
+
+        if let manual = project.url?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !manual.isEmpty,
+           let normalized = URLDetector.normalize(manual) {
+            // 手动 url：等服务端口就绪后再打开（如 NapCat 启动较慢）
+            if let port = normalized.port {
+                URLDetector.waitForPort(port, timeout: Timing.portWaitTimeout) { [weak self] _ in
+                    guard let self else { return }
+                    let url = URLDetector.fixLocalhost(normalized)
                     self.detectedURLs[project.id] = url
                     NSWorkspace.shared.open(url)
                     self.setStatus("「\(project.name)」已启动，正在浏览器打开")
-                } else {
-                    self.setStatus("「\(project.name)」已启动，未检测到网页地址", warning: true)
+                    self.objectWillChange.send()
                 }
-                self.objectWillChange.send()
+            } else {
+                let url = URLDetector.fixLocalhost(normalized)
+                detectedURLs[project.id] = url
+                NSWorkspace.shared.open(url)
+                setStatus("「\(project.name)」已启动，正在浏览器打开")
             }
+            return
+        }
+
+        // 自动探测：从日志或端口推断 URL
+        URLDetector.detect(manualURL: nil, logFile: info.logFile, pid: info.pid) { [weak self] url in
+            guard let self else { return }
+            if let url {
+                self.detectedURLs[project.id] = url
+                NSWorkspace.shared.open(url)
+                self.setStatus("「\(project.name)」已启动，正在浏览器打开")
+            } else {
+                self.setStatus("「\(project.name)」已启动，未检测到网页地址", warning: true)
+            }
+            self.objectWillChange.send()
         }
     }
 
@@ -272,16 +295,13 @@ final class ProjectStore: ObservableObject {
             setStatus("「\(project.name)」未在运行", warning: true)
             return
         }
-        DispatchQueue.global(qos: .utility).async { [weak self] in
+        URLDetector.detect(manualURL: nil, logFile: info.logFile, pid: info.pid, timeout: 3) { [weak self] url in
             guard let self else { return }
-            let url = URLDetector.detect(manualURL: nil, logFile: info.logFile, pid: info.pid, timeout: 3)
-            DispatchQueue.main.async {
-                if let url {
-                    self.detectedURLs[project.id] = url
-                    NSWorkspace.shared.open(url)
-                } else {
-                    self.setStatus("未检测到「\(project.name)」的网页地址", warning: true)
-                }
+            if let url {
+                self.detectedURLs[project.id] = url
+                NSWorkspace.shared.open(url)
+            } else {
+                self.setStatus("未检测到「\(project.name)」的网页地址", warning: true)
             }
         }
     }

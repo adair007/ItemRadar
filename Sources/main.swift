@@ -22,8 +22,14 @@ if let idx = args.firstIndex(of: "--test-url"), idx + 1 < args.count {
     )
     do {
         let info = try pm.start(path: tmp.path, command: command)
-        let url = URLDetector.detect(manualURL: nil, logFile: info.logFile, pid: info.pid, timeout: 8)
-        print("DETECTED: \(url?.absoluteString ?? "(none)")")
+        let semaphore = DispatchSemaphore(value: 0)
+        var detectedURL: URL?
+        URLDetector.detect(manualURL: nil, logFile: info.logFile, pid: info.pid, timeout: 8) { url in
+            detectedURL = url
+            semaphore.signal()
+        }
+        semaphore.wait()
+        print("DETECTED: \(detectedURL?.absoluteString ?? "(none)")")
         pm.stop(path: tmp.path)
     } catch {
         print("测试失败: \(error.localizedDescription)")
@@ -119,6 +125,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let contentView = ContentView(onReopenPopover: { [weak self] in
             self?.showPopover()
+        }, onManualRefresh: { [weak self] in
+            self?.store.refresh()
         }).environmentObject(store)
         popover = NSPopover()
         popover.contentSize = NSSize(width: 400, height: 520)
@@ -136,7 +144,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
-            store.refresh()
             showPopover()
         }
     }

@@ -6,6 +6,7 @@ import AppKit
 struct ContentView: View {
     @EnvironmentObject var store: ProjectStore
     var onReopenPopover: (() -> Void)? = nil
+    var onManualRefresh: (() -> Void)? = nil
 
     @State private var showAddProject = false
     @State private var showSettings = false
@@ -51,7 +52,7 @@ struct ContentView: View {
             .buttonStyle(.borderless)
             .help("从指定文件夹获取")
             Button {
-                store.refresh()
+                onManualRefresh?()
             } label: {
                 Image(systemName: "arrow.clockwise")
             }

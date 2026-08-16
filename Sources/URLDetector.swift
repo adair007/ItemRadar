@@ -7,19 +7,32 @@ enum URLDetector {
     /// 常见开发端口，按优先级从高到低排列。
     static let preferredPorts: [Int] = [3000, 5173, 8080, 8000, 4200, 5000, 4000, 3001, 3002, 9000, 6006]
 
-    static func detect(manualURL: String?, logFile: String, pid: Int32, timeout: TimeInterval = Timing.urlDetectTimeout) -> URL? {
+    /// 异步探测 URL，通过 completion 回调返回结果，避免阻塞线程。
+    /// completion 始终在主线程回调，调用方可直接更新 UI。
+    static func detect(manualURL: String?, logFile: String, pid: Int32, timeout: TimeInterval = Timing.urlDetectTimeout, completion: @escaping (URL?) -> Void) {
+        // 统一在主线程回调，避免调用方在后台线程误改 UI 状态。
+        let finish: (URL?) -> Void = { url in
+            DispatchQueue.main.async { completion(url) }
+        }
         // 1) 手动配置
         if let raw = manualURL?.trimmingCharacters(in: .whitespacesAndNewlines),
            !raw.isEmpty,
            let url = normalize(raw) {
-            return fixLocalhost(url)
+            finish(fixLocalhost(url))
+            return
         }
-        // 2) 日志解析（最多等 timeout 秒，收集所有 URL 后选最优）
-        if let url = detectFromLog(logFile: logFile, timeout: timeout) {
-            return fixLocalhost(url)
+        // 2) 日志解析（异步定时器驱动）
+        detectFromLog(logFile: logFile, timeout: timeout) { url in
+            if let url = url {
+                finish(fixLocalhost(url))
+                return
+            }
+            // 3) lsof 端口兜底
+            DispatchQueue.global(qos: .utility).async {
+                let url = detectFromPorts(pid: pid)
+                finish(url)
+            }
         }
-        // 3) lsof 端口兜底
-        return detectFromPorts(pid: pid)
     }
 
     // MARK: 归一化
@@ -44,34 +57,64 @@ enum URLDetector {
         return url
     }
 
-    // MARK: 日志解析
+    // MARK: 日志解析（异步定时器驱动）
 
-    static func detectFromLog(logFile: String, timeout: TimeInterval) -> URL? {
-        let deadline = Date().addingTimeInterval(timeout)
+    static func detectFromLog(logFile: String, timeout: TimeInterval, completion: @escaping (URL?) -> Void) {
         var allURLs: [URL] = []
-        while Date() < deadline {
-            let found = allURLsInFile(logFile)
-            for url in found {
-                guard !allURLs.contains(url) else { continue }
+        var fileOffset: UInt64 = 0
+        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        let deadline = DispatchTime.now() + timeout
+
+        timer.setEventHandler { [timer] in
+            // 增量读取：只扫描上次 offset 之后新增的日志内容。
+            let (found, newOffset) = newURLsInFile(logFile, fromOffset: fileOffset)
+            fileOffset = newOffset
+            for url in found where !allURLs.contains(url) {
                 allURLs.append(url)
                 // 快速路径：出现在常用端口上立即返回
                 if let port = url.port, preferredPorts.contains(port) {
-                    return url
+                    timer.cancel()
+                    completion(url)
+                    return
                 }
             }
-            Thread.sleep(forTimeInterval: 0.5)
+            if DispatchTime.now() >= deadline {
+                timer.cancel()
+                completion(bestURL(from: allURLs))
+            }
         }
-        // 最后一次扫描
-        for url in allURLsInFile(logFile) where !allURLs.contains(url) {
-            allURLs.append(url)
-        }
-        return bestURL(from: allURLs)
+
+        timer.schedule(deadline: .now(), repeating: .milliseconds(500))
+        timer.resume()
     }
 
+    /// 全量读取日志并解析 URL（供自测等一次性场景使用）。
     static func allURLsInFile(_ logFile: String) -> [URL] {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: logFile)),
               let text = String(data: data, encoding: .utf8) else { return [] }
         return allURLs(in: text)
+    }
+
+    /// 增量读取日志：只读取 `fromOffset` 之后新增的内容，返回解析出的 URL 与新 offset。
+    /// 相比全量重读，日志持续增长时能避免重复 I/O 与重复正则扫描。
+    static func newURLsInFile(_ logFile: String, fromOffset: UInt64) -> ([URL], UInt64) {
+        guard let handle = try? FileHandle(forReadingFrom: URL(fileURLWithPath: logFile)) else {
+            return ([], fromOffset)
+        }
+        defer { try? handle.close() }
+        let end = (try? handle.seekToEnd()) ?? fromOffset
+        var start = fromOffset
+        // 日志被截断（offset 越过文件末尾）时，从头读取。
+        if end < start {
+            start = 0
+        }
+        guard end > start else { return ([], fromOffset) }
+        try? handle.seek(toOffset: start)
+        let data = handle.readData(ofLength: Int(end - start))
+        guard let text = String(data: data, encoding: .utf8) else {
+            return ([], end)
+        }
+        return (allURLs(in: text), end)
     }
 
     static func allURLs(in text: String) -> [URL] {
@@ -180,13 +223,53 @@ enum URLDetector {
         return false
     }
 
-    /// 等待某端口开始监听（用于手动 url 时等服务就绪再开浏览器）。
-    static func waitForPort(_ port: Int, timeout: TimeInterval) {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if isPortListening(port) { return }
-            Thread.sleep(forTimeInterval: 0.5)
+    /// 异步等待某端口开始监听（用于手动 url 时等服务就绪再开浏览器）。
+    /// completion 始终在主线程回调。
+    static func waitForPort(_ port: Int, timeout: TimeInterval, completion: @escaping (Bool) -> Void) {
+        let finish: (Bool) -> Void = { ok in
+            DispatchQueue.main.async { completion(ok) }
         }
+        let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        let deadline = DispatchTime.now() + timeout
+
+        timer.setEventHandler { [timer] in
+            if isPortListening(port) {
+                timer.cancel()
+                finish(true)
+                return
+            }
+            if DispatchTime.now() >= deadline {
+                timer.cancel()
+                finish(false)
+            }
+        }
+
+        // 端口就绪无需秒级以下精度，1 秒探测一次即可，降低 lsof 调用频率。
+        timer.schedule(deadline: .now(), repeating: .seconds(1))
+        timer.resume()
+    }
+
+    // MARK: 批量端口探测（减少系统调用）
+
+    /// 一次性获取所有监听端口及其 PID，避免对每个端口单独执行 lsof。
+    static func allListeningPorts() -> [Int: Int32] {
+        guard let text = ProcessRunner.run("/usr/sbin/lsof", ["-nP", "-iTCP", "-sTCP:LISTEN", "-Fpcn"]) else { return [:] }
+        var result: [Int: Int32] = [:]
+        var currentPID: Int32?
+        for line in text.split(separator: "\n") {
+            if line.hasPrefix("p") {
+                currentPID = Int32(line.dropFirst())
+            } else if line.hasPrefix("n"), let pid = currentPID {
+                // 格式如 "n127.0.0.1:3000" 或 "n*:3000"
+                let addr = String(line.dropFirst())
+                if let portStr = addr.split(separator: ":").last,
+                   let port = Int(portStr),
+                   result[port] == nil {
+                    result[port] = pid
+                }
+            }
+        }
+        return result
     }
 
     // MARK: 从项目文件里猜网页地址
