@@ -10,7 +10,7 @@ enum UpdateStatus: Equatable {
     case failed            // 检查失败
 }
 
-/// 检查 GitHub 上的最新 Release，比较版本号，并缓存「每天首次检查」的结果。
+/// 检查 GitHub 上的最新版本 tag，比较版本号，并缓存「每天首次检查」的结果。
 final class UpdateManager: ObservableObject {
     @Published private(set) var status: UpdateStatus = .idle
     @Published private(set) var latestVersion: String?
@@ -46,35 +46,22 @@ final class UpdateManager: ObservableObject {
         guard status != .checking else { return }
         status = .checking
 
-        guard let url = URL(string: "https://api.github.com/repos/\(repo)/releases/latest") else {
-            status = .failed
-            completion?(.failed)
-            return
-        }
-        var request = URLRequest(url: url)
-        request.setValue("ItemRadar", forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 10
-
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            let remote = Self.fetchLatestVersion()
             DispatchQueue.main.async {
-                guard let self else { return }
                 self.defaults.set(Self.dateString(Date()), forKey: self.lastCheckKey)
 
-                guard error == nil,
-                      let data = data,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let tag = json["tag_name"] as? String else {
+                guard let remote else {
                     self.status = .failed
                     completion?(.failed)
                     return
                 }
-
-                let remote = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
                 if Self.isNewer(remote, than: AppInfo.currentVersion) {
                     self.latestVersion = remote
-                    self.releaseURL = json["html_url"] as? String
+                    self.releaseURL = "https://github.com/\(self.repo)/releases/tag/v\(remote)"
                     self.defaults.set(remote, forKey: self.latestVersionKey)
-                    if let html = self.releaseURL { self.defaults.set(html, forKey: self.releaseURLKey) }
+                    self.defaults.set(self.releaseURL, forKey: self.releaseURLKey)
                     self.status = .updateAvailable
                 } else {
                     self.latestVersion = nil
@@ -85,7 +72,7 @@ final class UpdateManager: ObservableObject {
                 }
                 completion?(self.status)
             }
-        }.resume()
+        }
     }
 
     /// 打开发布页面。
@@ -93,6 +80,31 @@ final class UpdateManager: ObservableObject {
         let url = releaseURL.flatMap { URL(string: $0) }
             ?? URL(string: "https://github.com/\(repo)/releases")
         if let url { NSWorkspace.shared.open(url) }
+    }
+
+    // MARK: - 通过 git 协议获取最新 tag（不受 GitHub REST API 限流影响）
+
+    private static func fetchLatestVersion() -> String? {
+        guard let output = ProcessRunner.run("/usr/bin/git", ["ls-remote", "--tags", "https://github.com/adair007/ItemRadar.git"]) else {
+            return nil
+        }
+        var versions = Set<String>()
+        for line in output.split(separator: "\n") {
+            guard let ref = line.split(separator: "\t").last else { continue }
+            var name = String(ref)
+            guard name.hasPrefix("refs/tags/") else { continue }
+            name = String(name.dropFirst("refs/tags/".count))
+            if name.hasSuffix("^{}") { name = String(name.dropLast(3)) }
+            guard name.hasPrefix("v") else { continue }
+            versions.insert(String(name.dropFirst()))
+        }
+        var latest: String?
+        for v in versions {
+            if latest == nil || isNewer(v, than: latest!) {
+                latest = v
+            }
+        }
+        return latest
     }
 
     // MARK: - 工具
