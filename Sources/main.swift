@@ -130,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }).environmentObject(store)
         popover = NSPopover()
         popover.contentSize = NSSize(width: 400, height: 520)
-        popover.behavior = .transient
+        popover.behavior = .semitransient
         popover.contentViewController = NSHostingController(rootView: contentView)
     }
 
