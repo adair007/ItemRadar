@@ -19,12 +19,11 @@ struct ProjectRow: View {
     let onUpdateOpenBrowser: (Bool) -> Void
     let onCopyCommand: () -> Void
 
-    private enum EditField: Hashable { case command, url, name }
+    private enum EditField { case command, url, name }
 
     @State private var editing: EditField?
     @State private var editText = ""
     @State private var showRemoveAlert = false
-    @FocusState private var editFieldFocused: EditField?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -84,8 +83,6 @@ struct ProjectRow: View {
                     TextField(field == .name ? "名称" : (field == .command ? "启动命令" : "网页地址"), text: $editText)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 12))
-                        .focused($editFieldFocused, equals: field)
-                        .onAppear { editFieldFocused = field }
                         .onSubmit { saveEdit() }
                     Button("保存") { saveEdit() }
                         .buttonStyle(.borderedProminent)

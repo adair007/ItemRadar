@@ -147,9 +147,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func showPopover() {
         guard let button = statusItem.button else { return }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        // 让 popover 窗口成为 key window，TextField 才能接收键盘输入。
-        // 不调用 NSApp.activate，否则会破坏「点击外部关闭」的 transient 行为。
-        popover.contentViewController?.view.window?.makeKey()
     }
 
     @objc private func togglePopover(_ sender: AnyObject?) {
