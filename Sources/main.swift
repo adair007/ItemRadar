@@ -137,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showPopover() {
         guard let button = statusItem.button else { return }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        // accessory 应用默认不成为活跃应用，其窗口无法成为 key window，
+        // 需要先激活应用，popover 里的 TextField 才能接收键盘输入。
+        NSApp.activate(ignoringOtherApps: true)
         popover.contentViewController?.view.window?.makeKey()
     }
 
