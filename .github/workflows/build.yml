@@ -1,0 +1,21 @@
+# 推送时自动构建并上传 zip 到 Release
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build and upload
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: bash build.sh
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/ItemRadar-*.zip
+          fail_on_unmatched_files: false
