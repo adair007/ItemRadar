@@ -110,6 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var popover: NSPopover!
     private let store = ProjectStore()
     private var clickMonitor: Any?
+    private var editWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -126,8 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
         popover = NSPopover()
         popover.contentSize = NSSize(width: 400, height: 520)
-        // 用 applicationDefined 完全自控关闭时机：点击弹窗外部由全局鼠标监控来关闭，
-        // 这样既能点击外部关闭，又允许弹窗内的 TextField 成为 key window 接收键盘输入。
+        // 用 applicationDefined 完全自控关闭时机：点击弹窗外部由全局鼠标监控来关闭。
         popover.behavior = .applicationDefined
         popover.delegate = self
         popover.contentViewController = NSHostingController(rootView: makeContentView())
@@ -139,6 +139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             self?.showPopover()
         }, onManualRefresh: { [weak self] in
             self?.store.refresh()
+        }, onEdit: { [weak self] project, field in
+            self?.openEditor(project: project, field: field)
         }).environmentObject(store)
     }
 
@@ -146,6 +148,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         stopClickMonitor()
         popover.contentViewController = NSHostingController(rootView: makeContentView())
+    }
+
+    // MARK: - 独立编辑窗口
+
+    /// 打开一个独立的小窗口来编辑字段，绕开 popover 内 TextField 收不到键盘输入的问题。
+    private func openEditor(project: Project, field: EditField) {
+        // 先关闭弹窗，避免它挡在编辑窗口后面。
+        if popover.isShown {
+            popover.performClose(nil)
+        }
+        editWindow?.close()
+
+        let view = EditFieldView(
+            project: project,
+            field: field,
+            onSave: { [weak self] text in
+                self?.applyEdit(project: project, field: field, text: text)
+                self?.editWindow?.close()
+            },
+            onCancel: { [weak self] in
+                self?.editWindow?.close()
+            }
+        )
+
+        let hosting = NSHostingController(rootView: view)
+        let window = NSWindow(contentViewController: hosting)
+        window.title = "编辑\(field.label)"
+        window.styleMask = [.titled, .closable]
+        window.setContentSize(NSSize(width: 340, height: 130))
+        window.center()
+        window.isReleasedWhenClosed = false
+        editWindow = window
+
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    /// 把编辑结果写回配置。
+    private func applyEdit(project: Project, field: EditField, text: String) {
+        switch field {
+        case .name: store.updateName(project, name: text)
+        case .command: store.updateCommand(project, command: text)
+        case .url: store.updateURL(project, url: text)
+        }
     }
 
     private func showPopover() {

@@ -13,16 +13,10 @@ struct ProjectRow: View {
     let onReveal: () -> Void
     let onOpenLog: () -> Void
     let onRemove: () -> Void
-    let onUpdateCommand: (String) -> Void
-    let onUpdateURL: (String) -> Void
-    let onUpdateName: (String) -> Void
+    let onEdit: (EditField) -> Void
     let onUpdateOpenBrowser: (Bool) -> Void
     let onCopyCommand: () -> Void
 
-    private enum EditField { case command, url, name }
-
-    @State private var editing: EditField?
-    @State private var editText = ""
     @State private var showRemoveAlert = false
 
     var body: some View {
@@ -78,35 +72,20 @@ struct ProjectRow: View {
                 .disabled(starting || stopping)
             }
 
-            if let field = editing {
-                HStack(spacing: 6) {
-                    TextField(field == .name ? "名称" : (field == .command ? "启动命令" : "网页地址"), text: $editText)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 12))
-                        .onSubmit { saveEdit() }
-                    Button("保存") { saveEdit() }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    Button("取消") { editing = nil }
-                        .buttonStyle(.borderless)
-                        .controlSize(.small)
+            VStack(alignment: .leading, spacing: 2) {
+                if let command = project.command {
+                    Text("启动命令：\(command)")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(nsColor: .tertiaryLabelColor))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-            } else {
-                VStack(alignment: .leading, spacing: 2) {
-                    if let command = project.command {
-                        Text("启动命令：\(command)")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(nsColor: .tertiaryLabelColor))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                    if let url = project.url {
-                        Text("网页地址：\(url)")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(nsColor: .tertiaryLabelColor))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
+                if let url = project.url {
+                    Text("网页地址：\(url)")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(nsColor: .tertiaryLabelColor))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
         }
@@ -121,16 +100,10 @@ struct ProjectRow: View {
                 Button("在浏览器打开", action: onOpenBrowser)
             }
             Divider()
-            Button("编辑名称…") {
-                startEdit(.name, project.name)
-            }
-            Button("编辑启动命令…") {
-                startEdit(.command, project.command ?? "")
-            }
+            Button("编辑名称…") { onEdit(.name) }
+            Button("编辑启动命令…") { onEdit(.command) }
             Button("复制启动命令", action: onCopyCommand)
-            Button("编辑网页地址…") {
-                startEdit(.url, project.url ?? "")
-            }
+            Button("编辑网页地址…") { onEdit(.url) }
             Button(project.openBrowser ? "✓ 自动打开浏览器" : "自动打开浏览器") {
                 onUpdateOpenBrowser(!project.openBrowser)
             }
@@ -147,25 +120,7 @@ struct ProjectRow: View {
         }
     }
 
-    private func startEdit(_ field: EditField, _ initial: String) {
-        editing = field
-        editText = initial
-    }
-
-    private func saveEdit() {
-        let trimmed = editText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if editing == .name {
-            onUpdateName(trimmed)
-        } else if editing == .command {
-            onUpdateCommand(trimmed)
-        } else if editing == .url {
-            onUpdateURL(trimmed)
-        }
-        editing = nil
-    }
-
     private var statusColor: Color {
         running ? .green : .gray
     }
 }
-
