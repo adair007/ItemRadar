@@ -1,4 +1,5 @@
 import Foundation
+import Darwin.sys.mount
 
 /// 展示用的项目模型。
 struct Project: Identifiable, Hashable {
@@ -113,6 +114,10 @@ enum ProjectScanner {
             let full = (dir as NSString).appendingPathComponent(name)
             var isDir: ObjCBool = false
             guard fm.fileExists(atPath: full, isDirectory: &isDir), isDir.boolValue else { continue }
+
+            // 跳过 nullfs 挂载点（例如 Downloads 目录中的 App Translocation）。
+            if isNullfsMount(full) { continue }
+
             if isProjectDir(full) {
                 result.append(full)
             } else if current < depth {
@@ -120,6 +125,23 @@ enum ProjectScanner {
             }
         }
         return result
+    }
+
+    /// 检查路径是否为 nullfs 挂载点。
+    /// 某些系统路径（如 App Translocation）是 nullfs 挂载，statfs 会卡住。
+    /// 这里用 statfs 检查文件系统类型，nullfs 类型则跳过。
+    private static func isNullfsMount(_ path: String) -> Bool {
+        var buf = statfs()
+        let ret = path.withCString { fsRep in
+            statfs(fsRep, &buf)
+        }
+        guard ret == 0 else { return false }
+        let fstype = withUnsafePointer(to: &buf.f_fstypename) { ptr in
+            ptr.withMemoryRebound(to: UInt8.self, capacity: Int(MFSTYPENAMELEN)) { bytePtr in
+                String(cString: bytePtr)
+            }
+        }
+        return fstype == "nullfs"
     }
 
     /// 依据锁文件推断包管理器。

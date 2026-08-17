@@ -84,8 +84,8 @@ final class UpdateManager: ObservableObject {
 
     /// 下载新版本 zip 并替换当前应用，然后重启。
     func performUpdate() {
-        guard let version = latestVersion else { return }
-        let downloadURL = URL(string: "https://github.com/\(repo)/releases/download/v\(version)/ItemRadar-v\(version).zip")!
+        let downloadURL = URL(string: "https://github.com/\(repo)/releases/download/v\(latestVersion ?? "")/ItemRadar-v\(latestVersion ?? "").zip")!
+        guard let version = latestVersion, !version.isEmpty else { return }
         let tmpDir = URL(fileURLWithPath: "/tmp/ItemRadar-update")
 
         DispatchQueue.global(qos: .utility).async {
@@ -105,8 +105,17 @@ final class UpdateManager: ObservableObject {
                 try unzip.run()
                 unzip.waitUntilExit()
 
+                // 解压后完整性校验：检查可执行文件是否存在且可执行。
+                let executablePath = tmpDir.appendingPathComponent("ItemRadar.app/Contents/MacOS/ItemRadar")
+                guard FileManager.default.isExecutableFile(atPath: executablePath.path) else {
+                    // 下载/解压不完整，清理后返回。
+                    try? FileManager.default.removeItem(at: tmpDir)
+                    return
+                }
+
                 // 启动替换脚本（独立进程，主进程退出后执行替换）。
-                Self.launchReplaceScript(tmpDir: tmpDir)
+                let appPath = NSHomeDirectory() + "/Applications/ItemRadar.app"
+                Self.launchReplaceScript(tmpDir: tmpDir, appPath: appPath)
 
                 DispatchQueue.main.async {
                     NSApp.terminate(nil)
@@ -119,16 +128,35 @@ final class UpdateManager: ObservableObject {
     }
 
     /// 启动一个独立 shell 脚本：等主进程退出后替换 app 并重启。
-    private static func launchReplaceScript(tmpDir: URL) {
-        let appPath = NSHomeDirectory() + "/Applications/ItemRadar.app"
+    /// 采用「先备份旧应用 → 原子替换 → 失败自动回滚」策略。
+    private static func launchReplaceScript(tmpDir: URL, appPath: String) {
         let script = """
         #!/bin/sh
         sleep 2
-        rm -rf "\(appPath)"
-        mv "\(tmpDir.path)/ItemRadar.app" "\(appPath)"
-        codesign --force --deep --sign - "\(appPath)"
-        open "\(appPath)"
-        rm -rf "\(tmpDir.path)"
+        APP_PATH="\(appPath)"
+        TMP_DIR="\(tmpDir.path)"
+        BACKUP="/tmp/ItemRadar-backup.app"
+        # 备份旧版
+        if [ -d "$APP_PATH" ]; then
+            rm -rf "$BACKUP"
+            mv "$APP_PATH" "$BACKUP"
+        fi
+        # 替换新版
+        if [ -d "$TMP_DIR/ItemRadar.app" ]; then
+            mv "$TMP_DIR/ItemRadar.app" "$APP_PATH"
+            codesign --force --deep --sign - "$APP_PATH"
+            open "$APP_PATH"
+            rm -rf "$TMP_DIR"
+            # 替换成功，删备份
+            rm -rf "$BACKUP"
+        else
+            # 替换失败，回滚
+            if [ -d "$BACKUP" ]; then
+                mv "$BACKUP" "$APP_PATH"
+                open "$APP_PATH"
+            fi
+            exit 1
+        fi
         """
         let scriptPath = tmpDir.appendingPathComponent("replace.sh")
         try? script.write(to: scriptPath, atomically: true, encoding: .utf8)
