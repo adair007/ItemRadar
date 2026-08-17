@@ -109,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let store = ProjectStore()
+    private var clickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -125,7 +126,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
         popover = NSPopover()
         popover.contentSize = NSSize(width: 400, height: 520)
-        popover.behavior = .semitransient
+        // 用 applicationDefined 完全自控关闭时机：点击弹窗外部由全局鼠标监控来关闭，
+        // 这样既能点击外部关闭，又允许弹窗内的 TextField 成为 key window 接收键盘输入。
+        popover.behavior = .applicationDefined
         popover.delegate = self
         popover.contentViewController = NSHostingController(rootView: makeContentView())
     }
@@ -141,12 +144,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     /// 弹窗关闭时重建根视图，重置所有 @State（作废未保存的编辑内容）。
     func popoverDidClose(_ notification: Notification) {
+        stopClickMonitor()
         popover.contentViewController = NSHostingController(rootView: makeContentView())
     }
 
     private func showPopover() {
         guard let button = statusItem.button else { return }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        startClickMonitor()
+    }
+
+    // MARK: - 点击弹窗外部关闭
+
+    private func startClickMonitor() {
+        guard clickMonitor == nil else { return }
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.handleGlobalClick()
+        }
+    }
+
+    private func stopClickMonitor() {
+        if let monitor = clickMonitor {
+            NSEvent.removeMonitor(monitor)
+            clickMonitor = nil
+        }
+    }
+
+    /// 全局鼠标点击：点击弹窗外部时关闭弹窗。
+    private func handleGlobalClick() {
+        guard popover.isShown else { return }
+        let mouse = NSEvent.mouseLocation // 屏幕坐标（左下角原点）
+
+        // 点击在菜单栏图标上 → 交给 togglePopover 处理，避免关闭后又立即重新打开。
+        if let button = statusItem.button, let buttonWindow = button.window {
+            let screenFrame = buttonWindow.convertToScreen(button.frame)
+            if screenFrame.contains(mouse) {
+                return
+            }
+        }
+        // 点击在弹窗内 → 不关闭。
+        if let window = popover.contentViewController?.view.window {
+            if window.frame.contains(mouse) {
+                return
+            }
+        }
+        // 其余位置（其他应用 / 桌面 / 菜单栏空白）→ 关闭。
+        popover.performClose(nil)
     }
 
     @objc private func togglePopover(_ sender: AnyObject?) {
