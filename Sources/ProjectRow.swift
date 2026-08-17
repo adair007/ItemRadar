@@ -13,7 +13,7 @@ struct ProjectRow: View {
     let onReveal: () -> Void
     let onOpenLog: () -> Void
     let onRemove: () -> Void
-    let onEdit: (EditField) -> Void
+    let onEdit: () -> Void
     let onUpdateOpenBrowser: (Bool) -> Void
     let onCopyCommand: () -> Void
 
@@ -100,10 +100,8 @@ struct ProjectRow: View {
                 Button("在浏览器打开", action: onOpenBrowser)
             }
             Divider()
-            Button("编辑名称…") { onEdit(.name) }
-            Button("编辑启动命令…") { onEdit(.command) }
+            Button("编辑…", action: onEdit)
             Button("复制启动命令", action: onCopyCommand)
-            Button("编辑网页地址…") { onEdit(.url) }
             Button(project.openBrowser ? "✓ 自动打开浏览器" : "自动打开浏览器") {
                 onUpdateOpenBrowser(!project.openBrowser)
             }

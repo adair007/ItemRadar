@@ -351,6 +351,20 @@ final class ProjectStore: ObservableObject {
         scanNow()
     }
 
+    /// 一次性更新项目的名称 / 启动命令 / 网页地址 / 自动打开浏览器，只扫描一次。
+    func updateProject(_ project: Project, name: String, command: String, url: String, openBrowser: Bool) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        configManager.upsertManual(path: project.id) { entry in
+            entry.name = trimmedName.isEmpty ? nil : trimmedName
+            entry.command = trimmedCommand.isEmpty ? nil : trimmedCommand
+            entry.url = trimmedURL.isEmpty ? nil : trimmedURL
+            entry.openBrowser = openBrowser
+        }
+        scanNow()
+    }
+
     /// 手动添加一个服务（用于扫描器识别不到的服务，如全局 CLI 工具 / 注入式运行时）。
     func addManualProject(name: String?, path: String, command: String, url: String?, openBrowser: Bool) {
         let trimmedPath = path.trimmingCharacters(in: .whitespacesAndNewlines)

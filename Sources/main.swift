@@ -139,8 +139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             self?.showPopover()
         }, onManualRefresh: { [weak self] in
             self?.store.refresh()
-        }, onEdit: { [weak self] project, field in
-            self?.openEditor(project: project, field: field)
+        }, onEdit: { [weak self] project in
+            self?.openEditor(project: project)
         }).environmentObject(store)
     }
 
@@ -152,19 +152,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     // MARK: - 独立编辑窗口
 
-    /// 打开一个独立的小窗口来编辑字段，绕开 popover 内 TextField 收不到键盘输入的问题。
-    private func openEditor(project: Project, field: EditField) {
+    /// 打开一个独立的编辑窗口，预加载项目信息，绕开 popover 内 TextField 收不到键盘输入的问题。
+    private func openEditor(project: Project) {
         // 先关闭弹窗，避免它挡在编辑窗口后面。
         if popover.isShown {
             popover.performClose(nil)
         }
         editWindow?.close()
 
-        let view = EditFieldView(
+        let view = EditProjectView(
             project: project,
-            field: field,
-            onSave: { [weak self] text in
-                self?.applyEdit(project: project, field: field, text: text)
+            onSave: { [weak self] name, command, url, openBrowser in
+                self?.store.updateProject(project, name: name, command: command, url: url, openBrowser: openBrowser)
                 self?.editWindow?.close()
             },
             onCancel: { [weak self] in
@@ -174,24 +173,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
         let hosting = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hosting)
-        window.title = "编辑\(field.label)"
+        window.title = "编辑项目"
         window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 340, height: 130))
+        window.setContentSize(NSSize(width: 400, height: 360))
         window.center()
         window.isReleasedWhenClosed = false
         editWindow = window
 
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-    }
-
-    /// 把编辑结果写回配置。
-    private func applyEdit(project: Project, field: EditField, text: String) {
-        switch field {
-        case .name: store.updateName(project, name: text)
-        case .command: store.updateCommand(project, command: text)
-        case .url: store.updateURL(project, url: text)
-        }
     }
 
     private func showPopover() {

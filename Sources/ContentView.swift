@@ -7,7 +7,7 @@ struct ContentView: View {
     @EnvironmentObject var store: ProjectStore
     var onReopenPopover: (() -> Void)? = nil
     var onManualRefresh: (() -> Void)? = nil
-    var onEdit: ((Project, EditField) -> Void)? = nil
+    var onEdit: ((Project) -> Void)? = nil
 
     @State private var showAddProject = false
     @State private var showSettings = false
@@ -132,7 +132,7 @@ struct ContentView: View {
                             onReveal: { store.reveal(project) },
                             onOpenLog: { store.openLog(project) },
                             onRemove: { store.removeFromList(project) },
-                            onEdit: { field in onEdit?(project, field) },
+                            onEdit: { onEdit?(project) },
                             onUpdateOpenBrowser: { store.updateOpenBrowser(project, openBrowser: $0) },
                             onCopyCommand: { store.copyCommand(project) }
                         )
