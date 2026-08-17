@@ -175,7 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let window = NSWindow(contentViewController: hosting)
         window.title = "编辑项目"
         window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 400, height: 360))
+        window.setContentSize(NSSize(width: 400, height: 330))
         window.center()
         window.isReleasedWhenClosed = false
         editWindow = window

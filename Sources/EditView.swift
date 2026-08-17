@@ -14,8 +14,6 @@ struct EditProjectView: View {
     @State private var url: String
     @State private var openBrowser: Bool
     @State private var validationError: String?
-    @State private var autoFillNote: String?
-    @State private var autoFillNoteIsWarning = false
 
     init(project: Project, onSave: @escaping (String, String, String, Bool) -> Void, onCancel: @escaping () -> Void) {
         self.project = project
@@ -32,16 +30,6 @@ struct EditProjectView: View {
             Text("编辑项目")
                 .font(.headline)
 
-            if let note = autoFillNote {
-                HStack(spacing: 5) {
-                    Image(systemName: autoFillNoteIsWarning ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                    Text(note)
-                }
-                .font(.caption)
-                .foregroundColor(autoFillNoteIsWarning ? .orange : .green)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-
             fieldLabel("项目安装位置")
             Text(project.path)
                 .font(.system(size: 12))
@@ -50,9 +38,8 @@ struct EditProjectView: View {
                 .truncationMode(.middle)
                 .textSelection(.enabled)
 
-            fieldLabel("名称（选填）")
-            TextField("给它起个名字，如「我的机器人」", text: $name)
-            helpText("不填就用文件夹的名字。")
+            fieldLabel("名称")
+            TextField("名称", text: $name)
 
             HStack {
                 fieldLabel("启动命令")
@@ -61,12 +48,10 @@ struct EditProjectView: View {
                     .font(.caption)
                     .buttonStyle(.borderless)
             }
-            TextField("如 dsh web、astrbot run、npm run dev", text: $command)
-            helpText("点「自动识别」会根据项目安装包自动填好命令和网页地址，可再手动改。")
+            TextField("启动命令", text: $command)
 
-            fieldLabel("网页地址（选填）")
-            TextField("如 http://localhost:3000", text: $url)
-            helpText("启动后要在浏览器打开的地址；留空会自动探测。")
+            fieldLabel("网页地址")
+            TextField("网页地址", text: $url)
 
             Toggle("启动后自动打开浏览器", isOn: $openBrowser)
                 .padding(.top, 2)
@@ -127,32 +112,10 @@ struct EditProjectView: View {
         let detectedURL = URLDetector.suggestURL(path: project.path, command: detectedCommand ?? command)
         if let cmd = detectedCommand { command = cmd }
         if let u = detectedURL { url = u }
-
-        switch (detectedCommand != nil, detectedURL != nil) {
-        case (true, true):
-            autoFillNote = "已自动识别启动命令和网页地址，请确认"
-            autoFillNoteIsWarning = false
-        case (true, false):
-            autoFillNote = "已自动识别启动命令，网页地址请手动补充"
-            autoFillNoteIsWarning = false
-        case (false, true):
-            autoFillNote = "已自动识别网页地址，启动命令请手动填写"
-            autoFillNoteIsWarning = false
-        case (false, false):
-            autoFillNote = "未能自动识别，请手动填写启动命令和网页地址"
-            autoFillNoteIsWarning = true
-        }
     }
 
     private func fieldLabel(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 12, weight: .semibold))
-    }
-
-    private func helpText(_ text: String) -> some View {
-        Text(text)
-            .font(.caption)
-            .foregroundColor(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
     }
 }
