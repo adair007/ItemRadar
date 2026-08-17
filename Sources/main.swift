@@ -105,7 +105,7 @@ if args.contains("--scan") || args.contains("--start") || args.contains("--stop"
 
 import SwiftUI
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let store = ProjectStore()
@@ -123,23 +123,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.action = #selector(togglePopover(_:))
         }
 
-        let contentView = ContentView(onReopenPopover: { [weak self] in
+        popover = NSPopover()
+        popover.contentSize = NSSize(width: 400, height: 520)
+        popover.behavior = .semitransient
+        popover.delegate = self
+        popover.contentViewController = NSHostingController(rootView: makeContentView())
+    }
+
+    /// 构建面板的 SwiftUI 根视图。
+    private func makeContentView() -> some View {
+        ContentView(onReopenPopover: { [weak self] in
             self?.showPopover()
         }, onManualRefresh: { [weak self] in
             self?.store.refresh()
         }).environmentObject(store)
-        popover = NSPopover()
-        popover.contentSize = NSSize(width: 400, height: 520)
-        popover.behavior = .semitransient
-        popover.contentViewController = NSHostingController(rootView: contentView)
+    }
+
+    /// 弹窗关闭时重建根视图，重置所有 @State（作废未保存的编辑内容）。
+    func popoverDidClose(_ notification: Notification) {
+        popover.contentViewController = NSHostingController(rootView: makeContentView())
     }
 
     private func showPopover() {
         guard let button = statusItem.button else { return }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        // accessory 应用默认不成为活跃应用，其窗口无法成为 key window，
-        // 需要先激活应用，popover 里的 TextField 才能接收键盘输入。
-        NSApp.activate(ignoringOtherApps: true)
+        // 让 popover 窗口成为 key window，TextField 才能接收键盘输入。
+        // 不调用 NSApp.activate，否则会破坏「点击外部关闭」的 transient 行为。
         popover.contentViewController?.view.window?.makeKey()
     }
 
