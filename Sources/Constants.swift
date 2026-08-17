@@ -5,7 +5,7 @@ enum AppInfo {
     static let name = "ItemRadar"
     static let bundleID = "local.itemradar"
     static let launchAgentLabel = "local.itemradar"
-    static let currentVersion = "1.0.0"
+    static let currentVersion = "1.1.0"
 
     static var appPath: String {
         FileManager.default.homeDirectoryForCurrentUser

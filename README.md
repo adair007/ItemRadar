@@ -1,5 +1,7 @@
 # ItemRadar
 
+[English](README-EN.md) · [更新日志](CHANGELOG.md)
+
 A macOS menu bar app that discovers and manages local services (projects without a desktop client) — scan, one-click start/stop, and auto-open the web UI in your browser.
 
 一个 macOS 菜单栏应用：自动发现本机「没有桌面客户端、原本要靠终端命令启动」的项目，一键启动 / 停止，并在服务有网页时自动用浏览器打开。
@@ -37,7 +39,7 @@ open ~/Applications/ItemRadar.app        # 启动
 
 ### 2. 打开面板
 
-点菜单栏的**终端图标** → 弹出 ItemRadar 面板。
+点菜单栏的**雷达图标** → 弹出 ItemRadar 面板。
 
 ### 3. 查看你的项目
 
@@ -71,7 +73,7 @@ open ~/Applications/ItemRadar.app        # 启动
 
 ## 功能
 
-- 菜单栏图标：终端符号（terminal）
+- 菜单栏图标：雷达符号
 - 点击图标弹出面板：项目列表（名字 / 路径 / 启动命令）+ 每项的「启动 / 停止」按钮
 - 启动后**自动探测网页地址并用浏览器打开**（见下文「自动打开浏览器」）
 - 右上角 📁「从指定文件夹获取」：弹文件夹选择器，选中后扫描其中的可启动项目
