@@ -52,28 +52,28 @@ struct ContentView: View {
                 Image(systemName: "folder.badge.plus")
             }
             .buttonStyle(.borderless)
-            .help("从指定文件夹获取")
+            .quickHelp("从指定文件夹获取项目")
             Button {
                 onManualRefresh?()
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
-            .help("刷新项目列表")
+            .quickHelp("刷新项目列表")
             Button {
                 onCheckUpdate?()
             } label: {
-                Image(systemName: "arrow.triangle.2.circlepath")
+                Image(systemName: "arrow.up.circle")
             }
             .buttonStyle(.borderless)
-            .help("检查更新")
+            .quickHelp("检查更新")
             Button {
                 showSettings = true
             } label: {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.borderless)
-            .help("设置扫描范围")
+            .quickHelp("设置扫描范围")
         }
         .padding(12)
     }
@@ -198,5 +198,39 @@ struct ContentView: View {
             store.addRootAndRefresh(path)
             onReopenPopover?()
         }
+    }
+}
+
+// MARK: - 即时 tooltip
+
+extension View {
+    /// 在鼠标移入时即时展示 tooltip，替代有系统显示延迟的 `.help(...)`。
+    func quickHelp(_ text: String) -> some View {
+        modifier(QuickHelpModifier(text: text))
+    }
+}
+
+private struct QuickHelpModifier: ViewModifier {
+    let text: String
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { hovering = $0 }
+            .overlay(alignment: .bottom) {
+                if hovering {
+                    Text(text)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.85))
+                        .cornerRadius(5)
+                        .offset(y: 28)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.1), value: hovering)
     }
 }
