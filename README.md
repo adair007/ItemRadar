@@ -2,6 +2,11 @@
 
 [English](README-EN.md) · [更新日志](CHANGELOG.md)
 
+![release](https://img.shields.io/github/v/release/adair007/ItemRadar)
+![license](https://img.shields.io/github/license/adair007/ItemRadar)
+![platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)
+![stars](https://img.shields.io/github/stars/adair007/ItemRadar)
+
 A macOS menu bar app that discovers and manages local services (projects without a desktop client) — scan, one-click start/stop, and auto-open the web UI in your browser.
 
 一个 macOS 菜单栏应用：自动发现本机「没有桌面客户端、原本要靠终端命令启动」的项目，一键启动 / 停止，并在服务有网页时自动用浏览器打开。

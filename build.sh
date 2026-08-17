@@ -22,4 +22,13 @@ cp Sources/icon.icns "$APP/Contents/Resources/icon.icns"
 echo ">> ad-hoc 签名 ..."
 codesign --force --deep --sign - "$APP"
 
+echo ">> 打包 zip ..."
+VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+ZIP_NAME="ItemRadar-${VERSION}.zip"
+cd "$BUILD_DIR"
+rm -f "$ZIP_NAME"
+zip -r "$ZIP_NAME" "$APP_NAME.app"
+cd - >/dev/null
+echo ">> zip 完成：$BUILD_DIR/$ZIP_NAME"
+
 echo ">> 完成：$APP"

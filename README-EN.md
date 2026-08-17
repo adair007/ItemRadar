@@ -2,6 +2,11 @@
 
 [中文](README.md) · [Changelog](CHANGELOG.md)
 
+![release](https://img.shields.io/github/v/release/adair007/ItemRadar)
+![license](https://img.shields.io/github/license/adair007/ItemRadar)
+![platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)
+![stars](https://img.shields.io/github/stars/adair007/ItemRadar)
+
 A macOS menu bar app that discovers and manages local services (projects without a desktop client) — scan, one-click start/stop, and auto-open the web UI in your browser.
 
 > The list only shows **startable** projects: a project appears only when its start command can be resolved. Projects whose command can't be resolved won't show up in the list (you must add a `command` manually to include them).

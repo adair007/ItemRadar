@@ -175,12 +175,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func showUpdateAlert() {
         let alert = NSAlert()
         alert.messageText = "发现新版本 v\(updateManager.latestVersion ?? "")"
-        alert.informativeText = "当前版本 v\(AppInfo.currentVersion)"
+        alert.informativeText = "当前版本 v\(AppInfo.currentVersion)，可一键更新并自动重启。"
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "去下载")
+        alert.addButton(withTitle: "现在更新")
         alert.addButton(withTitle: "取消")
         if alert.runModal() == .alertFirstButtonReturn {
-            updateManager.openReleasePage()
+            updateManager.performUpdate()
         }
     }
 

@@ -82,6 +82,65 @@ final class UpdateManager: ObservableObject {
         if let url { NSWorkspace.shared.open(url) }
     }
 
+    /// 下载新版本 zip 并替换当前应用，然后重启。
+    func performUpdate() {
+        guard let version = latestVersion else { return }
+        let downloadURL = URL(string: "https://github.com/\(repo)/releases/download/v\(version)/ItemRadar-v\(version).zip")!
+        let tmpDir = URL(fileURLWithPath: "/tmp/ItemRadar-update")
+
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                // 清理并创建临时目录。
+                try? FileManager.default.removeItem(at: tmpDir)
+                try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+
+                let zipPath = tmpDir.appendingPathComponent("update.zip")
+                let data = try Data(contentsOf: downloadURL)
+                try data.write(to: zipPath)
+
+                // 用 ditto 解压（macOS 内置，处理 .zip 最可靠）。
+                let unzip = Process()
+                unzip.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+                unzip.arguments = ["-xk", zipPath.path, tmpDir.path]
+                try unzip.run()
+                unzip.waitUntilExit()
+
+                // 启动替换脚本（独立进程，主进程退出后执行替换）。
+                Self.launchReplaceScript(tmpDir: tmpDir)
+
+                DispatchQueue.main.async {
+                    NSApp.terminate(nil)
+                }
+            } catch {
+                // 下载/解压失败，静默处理（不破坏用户当前操作）。
+                try? FileManager.default.removeItem(at: tmpDir)
+            }
+        }
+    }
+
+    /// 启动一个独立 shell 脚本：等主进程退出后替换 app 并重启。
+    private static func launchReplaceScript(tmpDir: URL) {
+        let appPath = NSHomeDirectory() + "/Applications/ItemRadar.app"
+        let script = """
+        #!/bin/sh
+        sleep 2
+        rm -rf "\(appPath)"
+        mv "\(tmpDir.path)/ItemRadar.app" "\(appPath)"
+        codesign --force --deep --sign - "\(appPath)"
+        open "\(appPath)"
+        rm -rf "\(tmpDir.path)"
+        """
+        let scriptPath = tmpDir.appendingPathComponent("replace.sh")
+        try? script.write(to: scriptPath, atomically: true, encoding: .utf8)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptPath.path)
+
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = [scriptPath.path]
+        try? task.run()
+        // 不等待 task 完成——主进程即将退出，脚本独立运行。
+    }
+
     // MARK: - 通过 git 协议获取最新 tag（不受 GitHub REST API 限流影响）
 
     private static func fetchLatestVersion() -> String? {
