@@ -151,8 +151,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func showPopover() {
         guard let button = statusItem.button else { return }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        // applicationDefined 的 popover 不会自动成为 key window，需手动 makeKey，
-        // 否则弹窗内的 TextField 无法接收键盘输入。点击外部关闭由全局监控负责，不受影响。
+        // accessory 应用默认不激活，其窗口无法成为 key window，TextField 收不到键盘输入。
+        // 先激活应用，再让 popover 成为 key window。点击外部关闭由全局监控负责，不受 activate 影响。
+        NSApp.activate(ignoringOtherApps: true)
         popover.contentViewController?.view.window?.makeKey()
         startClickMonitor()
     }
