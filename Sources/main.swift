@@ -104,26 +104,33 @@ if args.contains("--scan") || args.contains("--start") || args.contains("--stop"
 // === GUI 模式 ===
 
 import SwiftUI
+import Combine
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let store = ProjectStore()
+    private let updateManager = UpdateManager()
     private var clickMonitor: Any?
     private var editWindow: NSWindow?
+    private var updateCancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.image = NSImage(
-                systemSymbolName: "terminal",
-                accessibilityDescription: "ItemRadar"
-            )
             button.target = self
             button.action = #selector(togglePopover(_:))
         }
+        refreshStatusIcon()
+
+        // 更新状态变化时刷新菜单栏图标（红点标识）。
+        updateCancellable = updateManager.$status
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshStatusIcon()
+            }
 
         popover = NSPopover()
         popover.contentSize = NSSize(width: 400, height: 520)
@@ -141,7 +148,74 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             self?.store.refresh()
         }, onEdit: { [weak self] project in
             self?.openEditor(project: project)
+        }, onCheckUpdate: { [weak self] in
+            self?.manualCheckUpdate()
         }).environmentObject(store)
+    }
+
+    // MARK: - 更新检查
+
+    /// 手动检查更新，并用弹窗反馈结果。
+    private func manualCheckUpdate() {
+        updateManager.check { [weak self] status in
+            guard let self else { return }
+            switch status {
+            case .updateAvailable:
+                self.showUpdateAlert()
+            case .upToDate:
+                self.showInfoAlert(message: "当前已是最新版本 v\(AppInfo.currentVersion)")
+            case .failed:
+                self.showInfoAlert(message: "检查更新失败，请检查网络连接")
+            default:
+                break
+            }
+        }
+    }
+
+    private func showUpdateAlert() {
+        let alert = NSAlert()
+        alert.messageText = "发现新版本 v\(updateManager.latestVersion ?? "")"
+        alert.informativeText = "当前版本 v\(AppInfo.currentVersion)"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "去下载")
+        alert.addButton(withTitle: "取消")
+        if alert.runModal() == .alertFirstButtonReturn {
+            updateManager.openReleasePage()
+        }
+    }
+
+    private func showInfoAlert(message: String) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "好")
+        alert.runModal()
+    }
+
+    /// 刷新菜单栏图标：有更新时在右上角叠加红点。
+    private func refreshStatusIcon() {
+        guard let button = statusItem.button else { return }
+        button.image = Self.statusIcon(hasUpdate: updateManager.hasUpdate)
+        button.toolTip = updateManager.hasUpdate
+            ? "有可升级版本，点开面板检查"
+            : "ItemRadar"
+    }
+
+    private static func statusIcon(hasUpdate: Bool) -> NSImage? {
+        guard let base = NSImage(systemSymbolName: "terminal", accessibilityDescription: "ItemRadar") else {
+            return nil
+        }
+        guard hasUpdate else { return base }
+        let size = base.size
+        let image = NSImage(size: size)
+        image.lockFocus()
+        base.draw(in: NSRect(origin: .zero, size: size))
+        let dotRect = NSRect(x: size.width * 0.6, y: size.height * 0.6,
+                             width: size.width * 0.4, height: size.height * 0.4)
+        NSColor.systemRed.setFill()
+        NSBezierPath(ovalIn: dotRect).fill()
+        image.unlockFocus()
+        return image
     }
 
     /// 弹窗关闭时重建根视图，重置所有 @State（作废未保存的编辑内容）。
@@ -192,6 +266,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         NSApp.activate(ignoringOtherApps: true)
         popover.contentViewController?.view.window?.makeKey()
         startClickMonitor()
+        // 每天首次打开面板时检查一次更新（同一天内不重复请求）。
+        updateManager.checkDailyIfNeeded()
     }
 
     // MARK: - 点击弹窗外部关闭

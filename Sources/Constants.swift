@@ -1,10 +1,11 @@
 import Foundation
 
-/// 应用元信息（名称 / Bundle ID / 安装路径 / LaunchAgent 路径）。
+/// 应用元信息（名称 / Bundle ID / 安装路径 / LaunchAgent 路径 / 版本号）。
 enum AppInfo {
     static let name = "ItemRadar"
     static let bundleID = "local.itemradar"
     static let launchAgentLabel = "local.itemradar"
+    static let currentVersion = "1.0.0"
 
     static var appPath: String {
         FileManager.default.homeDirectoryForCurrentUser

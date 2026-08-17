@@ -8,6 +8,7 @@ struct ContentView: View {
     var onReopenPopover: (() -> Void)? = nil
     var onManualRefresh: (() -> Void)? = nil
     var onEdit: ((Project) -> Void)? = nil
+    var onCheckUpdate: (() -> Void)? = nil
 
     @State private var showAddProject = false
     @State private var showSettings = false
@@ -59,6 +60,13 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("刷新项目列表")
+            Button {
+                onCheckUpdate?()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath")
+            }
+            .buttonStyle(.borderless)
+            .help("检查更新")
             Button {
                 showSettings = true
             } label: {
