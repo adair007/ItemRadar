@@ -222,6 +222,7 @@ private struct QuickHelpModifier: ViewModifier {
                     Text(text)
                         .font(.caption)
                         .foregroundStyle(.white)
+                        .fixedSize()
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 5))
