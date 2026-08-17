@@ -221,16 +221,13 @@ private struct QuickHelpModifier: ViewModifier {
                 if hovering {
                     Text(text)
                         .font(.caption)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.black.opacity(0.85))
-                        .cornerRadius(5)
+                        .background(Color.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 5))
                         .offset(y: 28)
                         .allowsHitTesting(false)
-                        .transition(.opacity)
                 }
             }
-            .animation(.easeInOut(duration: 0.1), value: hovering)
     }
 }
