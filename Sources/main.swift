@@ -254,8 +254,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         window.isReleasedWhenClosed = false
         editWindow = window
 
-        NSApp.activate(ignoringOtherApps: true)
+        activateApp()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// macOS 14+ 使用新的 activate() API，macOS 13 保留兼容路径。
+    private func activateApp() {
+        if #available(macOS 14.0, *) {
+            NSApp.activate()
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     private func showPopover() {
@@ -263,7 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         // accessory 应用默认不激活，其窗口无法成为 key window，TextField 收不到键盘输入。
         // 先激活应用，再让 popover 成为 key window。点击外部关闭由全局监控负责，不受 activate 影响。
-        NSApp.activate(ignoringOtherApps: true)
+        activateApp()
         popover.contentViewController?.view.window?.makeKey()
         startClickMonitor()
         // 每天首次打开面板时检查一次更新（同一天内不重复请求）。

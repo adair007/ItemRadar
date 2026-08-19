@@ -30,7 +30,7 @@ ItemRadar 被设计成常驻菜单栏的「零打扰」工具，资源占用刻�
 
 ### 1. 安装
 
-需要 macOS 13+，并且已安装 Xcode 命令行工具（`xcode-select --install`）。
+需要 macOS 13 Ventura 或更高版本，并且已安装 Xcode 命令行工具（`xcode-select --install`）。支持 Apple Silicon（arm64）和 Intel（x86_64）Mac。当前应用使用 ad-hoc 签名，首次打开时可能需要在「系统设置 → 隐私与安全性」中允许打开。
 
 ```sh
 cd ~/Documents/deepseek/ProjectBar      # 源码目录

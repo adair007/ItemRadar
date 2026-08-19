@@ -11,7 +11,11 @@ enum DirectoryPicker {
         panel.canCreateDirectories = false
         panel.prompt = "选择"
         panel.message = message
-        NSApp.activate()
+        if #available(macOS 14.0, *) {
+            NSApp.activate()
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+        }
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
         return url.path
     }

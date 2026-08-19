@@ -27,7 +27,7 @@ ItemRadar is designed as a zero-distraction menu bar resident with deliberately 
 
 ### 1. Install
 
-Requires macOS 13+ and the Xcode command-line tools (`xcode-select --install`).
+Requires macOS 13 Ventura or later and the Xcode command-line tools (`xcode-select --install`). Universal builds support both Apple Silicon (arm64) and Intel (x86_64) Macs. The app is currently ad-hoc signed; on first launch, macOS may require approval in System Settings → Privacy & Security.
 
 ```sh
 cd ~/Documents/deepseek/ProjectBar      # source directory
